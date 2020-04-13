@@ -96,6 +96,7 @@ parser.add_argument(
 )
 
 # model arguments
+parser.add_argument("--batches_per_step", default=1, type=int, help="Number of iterations per step.")
 parser.add_argument(
     "--pretrained_model_name",
     default="bert-base-uncased",
@@ -165,6 +166,7 @@ def create_pipeline(
     batch_size=args.batch_size,
     num_gpus=args.num_gpus,
     mode='train',
+    batches_per_step=args.batches_per_step,
     label_ids=None,
     ignore_extra_tokens=args.ignore_extra_tokens,
     ignore_start_end=args.ignore_start_end,
@@ -229,7 +231,7 @@ def create_pipeline(
 
     if mode == 'train':
         loss = task_loss(logits=logits, labels=labels, loss_mask=loss_mask)
-        steps_per_epoch = len(data_layer) // (batch_size * num_gpus)
+        steps_per_epoch = len(data_layer) // (batch_size * num_gpus * batches_per_step)
         tensors_to_evaluate = [loss, logits]
         return tensors_to_evaluate, loss, steps_per_epoch, label_ids, classifier
     else:
@@ -273,6 +275,7 @@ nf.train(
     tensors_to_optimize=[train_loss],
     callbacks=callbacks,
     lr_policy=lr_policy_fn,
+    batches_per_step=args.batches_per_step,
     optimizer=args.optimizer_kind,
     optimization_params={"num_epochs": args.num_epochs, "lr": args.lr},
 )
