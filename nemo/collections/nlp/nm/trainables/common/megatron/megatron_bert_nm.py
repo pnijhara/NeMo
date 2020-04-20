@@ -22,6 +22,8 @@ import os
 import sys
 
 import torch
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../../../../../Megatron-LM'))
 from megatron import get_args
 from megatron.initialize import initialize_megatron
 from megatron.model.bert_model import bert_attention_mask_func, bert_extended_attention_mask, bert_position_ids

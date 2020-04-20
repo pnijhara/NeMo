@@ -39,29 +39,16 @@ parser = argparse.ArgumentParser(description="Token classification with pretrain
 parser.add_argument("--local_rank", default=None, type=int)
 
 # training arguments
-parser.add_argument(
-    "--work_dir",
-    default='output',
-    type=str,
-    help="The output directory where the model prediction and checkpoints will be written.",
-)
 parser.add_argument("--batch_size", default=8, type=int)
 parser.add_argument("--num_gpus", default=1, type=int)
 parser.add_argument("--num_epochs", default=5, type=int)
 parser.add_argument("--amp_opt_level", default="O0", type=str, choices=["O0", "O1", "O2"])
-parser.add_argument(
-    "--save_epoch_freq",
-    default=1,
-    type=int,
-    help="Frequency of saving checkpoint '-1' - step checkpoint won't be saved",
-)
 parser.add_argument(
     "--save_step_freq",
     default=-1,
     type=int,
     help="Frequency of saving checkpoint '-1' - step checkpoint won't be saved",
 )
-parser.add_argument("--loss_step_freq", default=250, type=int, help="Frequency of printing loss")
 parser.add_argument("--use_weighted_loss", action='store_true', help="Flag to indicate whether to use weighted loss")
 
 # learning rate arguments
@@ -81,16 +68,9 @@ parser.add_argument("--max_seq_length", default=128, type=int)
 parser.add_argument("--ignore_start_end", action='store_false')
 parser.add_argument("--ignore_extra_tokens", action='store_false')
 parser.add_argument("--none_label", default='O', type=str)
-parser.add_argument("--mode", default='train_eval', type=str)
 parser.add_argument("--no_shuffle_data", action='store_false', dest="shuffle_data")
 parser.add_argument("--use_cache", action='store_true', help="Whether to cache preprocessed data")
-parser.add_argument(
-    "--tokenizer",
-    default="nemobert",
-    type=str,
-    choices=["nemobert", "sentencepiece"],
-    help="tokenizer to use, only relevant when using custom pretrained checkpoint.",
-)
+
 parser.add_argument(
     "--vocab_file", default=None, help="Path to the vocab file. Required for pretrained Megatron models"
 )
@@ -125,23 +105,15 @@ parser.add_argument(
     type=str,
     help="The output directory where the model prediction and checkpoints will be written.",
 )
-parser.add_argument("--use_cache", action='store_true', help="Whether to cache preprocessed data")
 parser.add_argument(
     "--save_epoch_freq",
     default=1,
     type=int,
     help="Frequency of saving checkpoint '-1' - step checkpoint won't be saved",
 )
-parser.add_argument(
-    "--save_step_freq",
-    default=-1,
-    type=int,
-    help="Frequency of saving checkpoint '-1' - step checkpoint won't be saved",
-)
 parser.add_argument("--loss_step_freq", default=250, type=int, help="Frequency of printing loss")
 parser.add_argument("--eval_step_freq", default=-1, type=int, help="Frequency of evaluation")
 parser.add_argument("--eval_epoch_freq", default=1, type=int, help="Frequency of evaluation")
-parser.add_argument("--use_weighted_loss", action='store_true', help="Flag to indicate whether to use weighted loss")
 
 args = parser.parse_args()
 logging.info(args)
@@ -282,17 +254,16 @@ train_callback = nemo.core.SimpleLossLoggerCallback(
 callbacks.append(train_callback)
 
 
-if "eval" in args.mode:
-    eval_tensors, data_layer = create_pipeline(mode='dev', label_ids=label_ids, classifier=classifier)
-    eval_callback = nemo.core.EvaluatorCallback(
-        eval_tensors=eval_tensors,
-        user_iter_callback=lambda x, y: eval_iter_callback(x, y),
-        user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
-        tb_writer=nf.tb_writer,
-        eval_step=args.eval_step_freq,
-        eval_epoch=args.eval_epoch_freq,
-    )
-    callbacks.append(eval_callback)
+eval_tensors, data_layer = create_pipeline(mode='dev', label_ids=label_ids, classifier=classifier)
+eval_callback = nemo.core.EvaluatorCallback(
+    eval_tensors=eval_tensors,
+    user_iter_callback=lambda x, y: eval_iter_callback(x, y),
+    user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
+    tb_writer=nf.tb_writer,
+    eval_step=args.eval_step_freq,
+    eval_epoch=args.eval_epoch_freq,
+)
+callbacks.append(eval_callback)
 
 ckpt_callback = nemo.core.CheckpointCallback(
     folder=nf.checkpoint_dir, epoch_freq=args.save_epoch_freq, step_freq=args.save_step_freq
