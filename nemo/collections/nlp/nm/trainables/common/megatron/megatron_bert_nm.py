@@ -34,8 +34,6 @@ from nemo.backends.pytorch.nm import TrainableNM
 from nemo.core.neural_types import ChannelType, NeuralType
 from nemo.utils.decorators import add_port_docs
 
-sys.path.append('/home/ebakhturina/megatron_public/Megatron-LM')
-
 
 __all__ = ['MegatronBERT']
 
