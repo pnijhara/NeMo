@@ -272,6 +272,17 @@ if "eval" in args.mode:
     )
     callbacks.append(eval_callback)
 
+    test_tensors, data_layer = create_pipeline(mode='test', label_ids=label_ids, classifier=classifier)
+    test_callback = nemo.core.EvaluatorCallback(
+        eval_tensors=test_tensors,
+        user_iter_callback=lambda x, y: eval_iter_callback(x, y),
+        user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
+        tb_writer=nf.tb_writer,
+        eval_step=args.eval_step_freq,
+        eval_epoch=args.eval_epoch_freq,
+    )
+    callbacks.append(test_callback)
+
 
 if "train" in args.mode:
     lr_policy_fn = get_lr_policy(
@@ -287,17 +298,3 @@ if "train" in args.mode:
         optimization_params={"num_epochs": args.num_epochs, "lr": args.lr},
     )
 
-if "eval" in args.mode:
-
-    test_tensors, data_layer = create_pipeline(mode='test', label_ids=label_ids, classifier=classifier)
-    test_callback = nemo.core.EvaluatorCallback(
-        eval_tensors=test_tensors,
-        user_iter_callback=lambda x, y: eval_iter_callback(x, y),
-        user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
-        tb_writer=nf.tb_writer,
-        eval_step=args.eval_step_freq,
-        eval_epoch=args.eval_epoch_freq,
-    )
-    nf.eval(
-            callbacks=[test_callback]
-        )

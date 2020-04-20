@@ -212,23 +212,6 @@ eval_callback = nemo.core.EvaluatorCallback(
     eval_epoch=args.eval_epoch_freq,
 )
 
-# Create callback to save checkpoints
-ckpt_callback = nemo.core.CheckpointCallback(
-    folder=nf.checkpoint_dir, epoch_freq=args.save_epoch_freq, step_freq=args.save_step_freq
-)
-
-lr_policy_fn = get_lr_policy(
-    args.lr_policy, total_steps=args.num_epochs * steps_per_epoch, warmup_ratio=args.lr_warmup_proportion
-)
-
-nf.train(
-    tensors_to_optimize=[train_loss],
-    callbacks=[train_callback, eval_callback, ckpt_callback],
-    lr_policy=lr_policy_fn,
-    optimizer=args.optimizer_kind,
-    optimization_params={"num_epochs": args.num_epochs, "lr": args.lr, "weight_decay": args.weight_decay},
-)
-
 
 test_tensors, _, _, data_layer = create_pipeline(
     num_samples=args.num_eval_samples,
@@ -247,6 +230,21 @@ test_callback = nemo.core.EvaluatorCallback(
     eval_step=args.eval_step_freq,
     eval_epoch=args.eval_epoch_freq,
 )
-nf.eval(
-        callbacks=[test_callback]
-    )
+
+# Create callback to save checkpoints
+ckpt_callback = nemo.core.CheckpointCallback(
+    folder=nf.checkpoint_dir, epoch_freq=args.save_epoch_freq, step_freq=args.save_step_freq
+)
+
+lr_policy_fn = get_lr_policy(
+    args.lr_policy, total_steps=args.num_epochs * steps_per_epoch, warmup_ratio=args.lr_warmup_proportion
+)
+
+nf.train(
+    tensors_to_optimize=[train_loss],
+    callbacks=[train_callback, eval_callback, test_callback, ckpt_callback],
+    lr_policy=lr_policy_fn,
+    optimizer=args.optimizer_kind,
+    optimization_params={"num_epochs": args.num_epochs, "lr": args.lr, "weight_decay": args.weight_decay},
+)
+
