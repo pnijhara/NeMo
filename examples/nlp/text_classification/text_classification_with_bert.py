@@ -28,6 +28,7 @@ from nemo.utils.lr_policies import get_lr_policy
 parser = argparse.ArgumentParser(description='Sentence classification with pretrained BERT')
 parser.add_argument("--work_dir", default='outputs', type=str)
 parser.add_argument("--data_dir", required=True, type=str)
+parser.add_argument("--mode", default="train_eval", choices=["train_eval", "train", "eval"], type=str)
 parser.add_argument(
     '--pretrained_model_name',
     default='roberta-base',
@@ -189,7 +190,7 @@ eval_tensors, _, _, data_layer = create_pipeline(
     num_samples=args.num_eval_samples,
     batch_size=args.batch_size,
     num_gpus=args.num_gpus,
-    mode=args.eval_file_prefix,
+    mode="dev",
     is_training=False,
 )
 
@@ -227,3 +228,25 @@ nf.train(
     optimizer=args.optimizer_kind,
     optimization_params={"num_epochs": args.num_epochs, "lr": args.lr, "weight_decay": args.weight_decay},
 )
+
+
+test_tensors, _, _, data_layer = create_pipeline(
+    num_samples=args.num_eval_samples,
+    batch_size=args.batch_size,
+    num_gpus=args.num_gpus,
+    mode="test",
+    is_training=False,
+)
+
+
+test_callback = nemo.core.EvaluatorCallback(
+    eval_tensors=test_tensors,
+    user_iter_callback=lambda x, y: eval_iter_callback(x, y, data_layer),
+    user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, f'{nf.work_dir}/graphs'),
+    tb_writer=nf.tb_writer,
+    eval_step=args.eval_step_freq,
+    eval_epoch=args.eval_epoch_freq,
+)
+nf.eval(
+        callbacks=[test_callback]
+    )

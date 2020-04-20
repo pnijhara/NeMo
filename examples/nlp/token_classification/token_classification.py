@@ -42,6 +42,7 @@ parser.add_argument("--local_rank", default=None, type=int)
 parser.add_argument("--batch_size", default=8, type=int)
 parser.add_argument("--num_gpus", default=1, type=int)
 parser.add_argument("--num_epochs", default=5, type=int)
+parser.add_argument("--mode", default="train_eval", type=str, choices=["train_eval", "train", "eval"])
 parser.add_argument("--amp_opt_level", default="O0", type=str, choices=["O0", "O1", "O2"])
 parser.add_argument(
     "--save_step_freq",
@@ -132,7 +133,7 @@ nf = nemo.core.NeuralModuleFactory(
     log_dir=args.work_dir,
     create_tb_writer=True,
     files_to_copy=[__file__],
-    add_time_to_log_dir=True,
+    add_time_to_log_dir=False,
 )
 
 output_file = f'{nf.work_dir}/output.txt'
@@ -241,43 +242,62 @@ def create_pipeline(
 
 
 callbacks = []
-train_tensors, train_loss, steps_per_epoch, label_ids, classifier = create_pipeline()
-logging.info(f"steps_per_epoch = {steps_per_epoch}")
-# Create trainer and execute training action
-train_callback = nemo.core.SimpleLossLoggerCallback(
-    tensors=train_tensors,
-    print_func=lambda x: logging.info("Loss: {:.3f}".format(x[0].item())),
-    get_tb_values=lambda x: [["loss", x[0]]],
-    tb_writer=nf.tb_writer,
-)
-callbacks.append(train_callback)
+
+if "train" in args.mode:
+    train_tensors, train_loss, steps_per_epoch, label_ids, classifier = create_pipeline()
+    logging.info(f"steps_per_epoch = {steps_per_epoch}")
+    # Create trainer and execute training action
+    train_callback = nemo.core.SimpleLossLoggerCallback(
+        tensors=train_tensors,
+        print_func=lambda x: logging.info("Loss: {:.3f}".format(x[0].item())),
+        get_tb_values=lambda x: [["loss", x[0]]],
+        tb_writer=nf.tb_writer,
+    )
+    callbacks.append(train_callback)
+
+    ckpt_callback = nemo.core.CheckpointCallback(
+        folder=nf.checkpoint_dir, epoch_freq=args.save_epoch_freq, step_freq=args.save_step_freq
+        )
+    callbacks.append(ckpt_callback)
+
+if "eval" in args.mode:
+    eval_tensors, data_layer = create_pipeline(mode='dev', label_ids=label_ids, classifier=classifier)
+    eval_callback = nemo.core.EvaluatorCallback(
+        eval_tensors=eval_tensors,
+        user_iter_callback=lambda x, y: eval_iter_callback(x, y),
+        user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
+        tb_writer=nf.tb_writer,
+        eval_step=args.eval_step_freq,
+        eval_epoch=args.eval_epoch_freq,
+    )
+    callbacks.append(eval_callback)
 
 
-eval_tensors, data_layer = create_pipeline(mode='dev', label_ids=label_ids, classifier=classifier)
-eval_callback = nemo.core.EvaluatorCallback(
-    eval_tensors=eval_tensors,
-    user_iter_callback=lambda x, y: eval_iter_callback(x, y),
-    user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
-    tb_writer=nf.tb_writer,
-    eval_step=args.eval_step_freq,
-    eval_epoch=args.eval_epoch_freq,
-)
-callbacks.append(eval_callback)
+if "train" in args.mode:
+    lr_policy_fn = get_lr_policy(
+        args.lr_policy, total_steps=args.num_epochs * steps_per_epoch, warmup_ratio=args.lr_warmup_proportion
+    )
 
-ckpt_callback = nemo.core.CheckpointCallback(
-    folder=nf.checkpoint_dir, epoch_freq=args.save_epoch_freq, step_freq=args.save_step_freq
-)
-callbacks.append(ckpt_callback)
+    nf.train(
+        tensors_to_optimize=[train_loss],
+        callbacks=callbacks,
+        lr_policy=lr_policy_fn,
+        batches_per_step=args.batches_per_step,
+        optimizer=args.optimizer_kind,
+        optimization_params={"num_epochs": args.num_epochs, "lr": args.lr},
+    )
 
-lr_policy_fn = get_lr_policy(
-    args.lr_policy, total_steps=args.num_epochs * steps_per_epoch, warmup_ratio=args.lr_warmup_proportion
-)
+if "eval" in args.mode:
 
-nf.train(
-    tensors_to_optimize=[train_loss],
-    callbacks=callbacks,
-    lr_policy=lr_policy_fn,
-    batches_per_step=args.batches_per_step,
-    optimizer=args.optimizer_kind,
-    optimization_params={"num_epochs": args.num_epochs, "lr": args.lr},
-)
+    test_tensors, data_layer = create_pipeline(mode='test', label_ids=label_ids, classifier=classifier)
+    test_callback = nemo.core.EvaluatorCallback(
+        eval_tensors=test_tensors,
+        user_iter_callback=lambda x, y: eval_iter_callback(x, y),
+        user_epochs_done_callback=lambda x: eval_epochs_done_callback(x, label_ids, f'{nf.work_dir}/graphs'),
+        tb_writer=nf.tb_writer,
+        eval_step=args.eval_step_freq,
+        eval_epoch=args.eval_epoch_freq,
+    )
+    nf.eval(
+            callbacks=[test_callback]
+        )
