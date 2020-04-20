@@ -74,7 +74,6 @@ parser.add_argument("--use_cache", action='store_true', help="Whether to cache p
 parser.add_argument(
     "--vocab_file", default=None, help="Path to the vocab file. Required for pretrained Megatron models"
 )
-
 # model arguments
 parser.add_argument("--batches_per_step", default=1, type=int, help="Number of iterations per step.")
 parser.add_argument(
