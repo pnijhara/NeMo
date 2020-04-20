@@ -137,7 +137,7 @@ def parse_args():
         help="tokenizer to use, only relevant when using custom pretrained checkpoint.",
     )
     parser.add_argument(
-    "--vocab_file", default=None, help="Path to the vocab file. Required for pretrained Megatron models"
+        "--vocab_file", default=None, help="Path to the vocab file. Required for pretrained Megatron models"
     )
     parser.add_argument("--optimizer", default="fused_adam", type=str, help="Optimizer kind")
     parser.add_argument("--lr_policy", default="WarmupAnnealing", type=str)
@@ -340,7 +340,9 @@ if __name__ == "__main__":
 
     if args.pretrained_model_name == "megatron":
         if not (args.bert_config and args.bert_checkpoint and args.vocab_file):
-            raise FileNotFoundError("Config file, checkpoint and vocabulary file should be provided for Megatron models.")
+            raise FileNotFoundError(
+                "Config file, checkpoint and vocabulary file should be provided for Megatron models."
+            )
         model = nemo_nlp.nm.trainables.MegatronBERT(config_file=args.bert_config, vocab_file=args.vocab_file)
     else:
         model = nemo_nlp.nm.trainables.get_huggingface_model(
