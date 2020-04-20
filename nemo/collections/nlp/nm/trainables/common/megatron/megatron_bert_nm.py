@@ -22,7 +22,7 @@ import os
 import sys
 
 import torch
-
+print(os.path.join(os.path.dirname(__file__), '../../../../../../../../Megatron-LM'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../../../../../../../Megatron-LM'))
 from megatron import get_args
 from megatron.initialize import initialize_megatron
