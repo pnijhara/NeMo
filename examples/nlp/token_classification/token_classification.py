@@ -295,6 +295,6 @@ if "train" in args.mode:
         lr_policy=lr_policy_fn,
         batches_per_step=args.batches_per_step,
         optimizer=args.optimizer_kind,
-        optimization_params={"num_epochs": args.num_epochs, "lr": args.lr},
+        optimization_params={"num_epochs": args.num_epochs, "lr": args.lr, "weight_decay": args.weight_decay},
     )
 
