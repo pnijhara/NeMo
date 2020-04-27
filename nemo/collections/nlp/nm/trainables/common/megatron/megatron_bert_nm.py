@@ -130,4 +130,15 @@ class MegatronBERT(TrainableNM):
         return sequence_output
 
     def restore_from(self, path, local_rank=0):
-        self.language_model.load_state_dict(torch.load(path, map_location="cpu")['model'][self._language_model_key])
+        if self.placement == DeviceType.AllGpu:
+            load_device = f"cuda:{local_rank}"
+        else:
+            load_device = self._device
+        
+        state_dict = torch.load(path, map_location=load_device)
+
+        # to load from Megatron pretrained checkpoint
+        if 'model' in state_dict:
+            self.language_model.load_state_dict(state_dict['model'][self._language_model_key])
+        else:
+            self.load_state_dict(state_dict)
