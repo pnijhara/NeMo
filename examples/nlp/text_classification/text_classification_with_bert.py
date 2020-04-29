@@ -112,7 +112,7 @@ tokenizer = nemo.collections.nlp.data.tokenizers.get_tokenizer(
     pretrained_model_name=args.pretrained_model_name,
     tokenizer_model=args.tokenizer_model,
     vocab_file=args.vocab_file,
-    do_lower_case=args.pretrained_model_name == 'megatron',
+    do_lower_case=args.do_lower_case,
 )
 
 hidden_size = model.hidden_size

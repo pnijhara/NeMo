@@ -81,7 +81,7 @@ def get_tokenizer(
     do_lower_case (bool): (whether to apply lower cased) - only applicable when tokenizer is build with vocab file
     '''
     if pretrained_model_name == 'megatron':
-        return nemo.collections.nlp.data.tokenizers.NemoBertTokenizer(vocab_file=vocab_file, do_lower_case=True)
+        return nemo.collections.nlp.data.tokenizers.NemoBertTokenizer(vocab_file=vocab_file, do_lower_case=do_lower_case)
 
     if tokenizer_name == 'nemobert':
         tokenizer = nemo.collections.nlp.data.tokenizers.NemoBertTokenizer(

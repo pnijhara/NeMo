@@ -71,7 +71,11 @@ parser.add_argument("--ignore_extra_tokens", action='store_false')
 parser.add_argument("--none_label", default='O', type=str)
 parser.add_argument("--no_shuffle_data", action='store_false', dest="shuffle_data")
 parser.add_argument("--use_cache", action='store_true', help="Whether to cache preprocessed data")
-
+parser.add_argument(
+    "--do_lower_case",
+    action='store_true',
+    help="Whether to lower case the input text. True for uncased models, False for cased models.",
+)
 parser.add_argument(
     "--vocab_file", default=None, help="Path to the vocab file. Required for pretrained Megatron models"
 )
@@ -152,7 +156,7 @@ tokenizer = nemo.collections.nlp.data.tokenizers.get_tokenizer(
     pretrained_model_name=args.pretrained_model_name,
     tokenizer_model=args.tokenizer_model,
     vocab_file=args.vocab_file,
-    do_lower_case=args.pretrained_model_name == 'megatron',
+    do_lower_case=args.do_lower_case,
 )
 
 if args.bert_checkpoint is not None:
