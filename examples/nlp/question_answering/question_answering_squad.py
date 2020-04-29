@@ -154,6 +154,9 @@ def parse_args():
         help="Whether to lower case the input text. True for uncased models, False for cased models.",
     )
     parser.add_argument(
+        "--head_checkpoint", default=None, type=str, help="Path to BERT model checkpoint for finetuning."
+    )
+    parser.add_argument(
         "--mode", default="train_eval", choices=["train", "train_eval", "eval", "test"], help="Mode of model usage."
     )
     parser.add_argument(
@@ -368,6 +371,9 @@ if __name__ == "__main__":
     squad_loss = nemo_nlp.nm.losses.SpanningLoss()
     if args.bert_checkpoint is not None:
         model.restore_from(args.bert_checkpoint)
+
+    if args.head_checkpoint is not None:
+        qa_head.restore_from(args.head_checkpoint)
 
     if "train" in args.mode:
         train_loss, train_steps_per_epoch, _, _ = create_pipeline(
