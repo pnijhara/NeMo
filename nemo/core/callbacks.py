@@ -64,7 +64,7 @@ class ActionCallback(ABC):
     @property
     def global_rank(self):
         return self.action.global_rank
-    
+
     @property
     def mp_rank(self):
         return self.action.mp_rank
@@ -278,10 +278,7 @@ class CheckpointCallback(ActionCallback):
         if self.dp_rank is not None and self.dp_rank != 0:
             return
         if self.mp_rank is not None:
-            path = os.path.join(
-                path,
-                f'mp_rank_{self.mp_rank:02d}',
-                )
+            path = os.path.join(path, f'mp_rank_{self.mp_rank:02d}',)
         if not os.path.isdir(path):
             logging.info(f"Creating {path} folder")
             os.makedirs(path, exist_ok=True)
@@ -318,10 +315,7 @@ class CheckpointCallback(ActionCallback):
 
     def __restore_from(self, path):
         if self.mp_rank is not None:
-            path = os.path.join(
-            path,
-            f'mp_rank_{self.mp_rank:02d}',
-            )
+            path = os.path.join(path, f'mp_rank_{self.mp_rank:02d}',)
         if not os.path.isdir(path):
             if self._force_load:
                 raise ValueError("force_load was set to True for checkpoint callback but a checkpoint was not found.")
