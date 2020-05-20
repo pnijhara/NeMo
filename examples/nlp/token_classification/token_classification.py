@@ -144,6 +144,7 @@ if not os.path.exists(args.data_dir):
         "-NER/tree/master/data."
     )
 
+
 nf = nemo.core.NeuralModuleFactory(
     backend=nemo.core.Backend.PyTorch,
     local_rank=args.local_rank,
@@ -152,7 +153,7 @@ nf = nemo.core.NeuralModuleFactory(
     create_tb_writer=True,
     files_to_copy=[__file__],
     add_time_to_log_dir=not args.no_time_to_log_dir,
-    model_parallel_size=args.model-parallel-size,
+    model_parallel_size=args.model_parallel_size,
     random_seed=args.random_seed,
 )
 
