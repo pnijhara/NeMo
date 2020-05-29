@@ -53,11 +53,13 @@ class PtActions(Actions):
         self,
         local_rank=None,
         global_rank=None,
-        dp_rank=None,
-        mp_rank=None,
+        data_parallel_rank=None,
+        model_parallel_rank=None,
+        data_parallel_group=None,
+        data_parallel_size=None,
         tb_writer=None,
         optimization_level=Optimization.mxprO0,
-    ):
+        ):
         need_apex = local_rank is not None or optimization_level != Optimization.mxprO0
         if need_apex:
             try:
@@ -92,8 +94,10 @@ class PtActions(Actions):
         super(PtActions, self).__init__(
             local_rank=local_rank,
             global_rank=global_rank,
-            dp_rank=dp_rank,
-            mp_rank=mp_rank,
+            data_parallel_rank=data_parallel_rank,
+            model_parallel_rank=model_parallel_rank,
+            data_parallel_group=data_parallel_group,
+            data_parallel_size=data_parallel_size,
             optimization_level=optimization_level,
         )
 
@@ -534,12 +538,17 @@ class PtActions(Actions):
                 #         self.local_rank, world_size
                 #     )
                 # )
-
+                logging.info(f'Data parallel size: {self.data_parallel_size}')
                 if dl_nm.dataset is not None:
                     sampler = None
                     if not isinstance(dl_nm.dataset, torch.utils.data.IterableDataset):
+                        #TODO: add num_replicas = data parallel world size from attribute
+                        # sampler = torch.utils.data.distributed.DistributedSampler(
+                        #     dataset=dl_nm.dataset, shuffle=dl_nm.shuffle
+                        # )
                         sampler = torch.utils.data.distributed.DistributedSampler(
-                            dataset=dl_nm.dataset, shuffle=dl_nm.shuffle
+                            dataset=dl_nm.dataset, shuffle=dl_nm.shuffle, rank=self.data_parallel_rank,
+                            num_replicas=self.data_parallel_size
                         )
                     dataloader_params = {
                         'dataset': dl_nm.dataset,
@@ -714,7 +723,8 @@ class PtActions(Actions):
                     sampler = None
                     if not isinstance(dl_nm.dataset, torch.utils.data.IterableDataset):
                         sampler = torch.utils.data.distributed.DistributedSampler(
-                            dataset=dl_nm.dataset, shuffle=dl_nm.shuffle
+                            dataset=dl_nm.dataset, shuffle=dl_nm.shuffle,
+                            rank=self.data_parallel_rank, num_replicas=self.data_parallel_size
                         )
                     dataloader_params = {
                         'dataset': dl_nm.dataset,
@@ -1243,8 +1253,13 @@ class PtActions(Actions):
                 train_sampler = None
                 if not isinstance(t_dataset, torch.utils.data.IterableDataset):
                     train_sampler = torch.utils.data.distributed.DistributedSampler(
-                        dataset=t_dataset, shuffle=dataNM.shuffle
+                        dataset=t_dataset, shuffle=dataNM.shuffle,
+                        rank=self.data_parallel_rank, num_replicas=self.data_parallel_size
                     )
+                    # train_sampler = torch.utils.data.distributed.DistributedSampler(
+                    #     dataset=t_dataset, shuffle=dataNM.shuffle, rank=self.dp_rank,
+                    #     num_replicas=1
+                    # )
                 dataloader_params = {
                     'dataset': t_dataset,
                     'sampler': train_sampler,
@@ -1302,8 +1317,14 @@ class PtActions(Actions):
 
                         # By default, disable broadcast_buffers. This disables batch norm synchronization on forward
                         # pass
+                        # pmodule = DDP(
+                        #     pmodule, device_ids=[self.local_rank],
+                        #     broadcast_buffers=False, find_unused_parameters=True
+                        # )
+                        i = torch.cuda.current_device()
                         pmodule = DDP(
-                            pmodule, device_ids=[self.local_rank], broadcast_buffers=False, find_unused_parameters=True
+                            pmodule, device_ids=[i], output_device=i, 
+                            process_group=self.data_parallel_group
                         )
 
                     # # Convert batchnorm modules to synced if applicable
@@ -1459,6 +1480,9 @@ class PtActions(Actions):
                     # Ended step. Do optimizer update
                     if grad_norm_clip is not None:
                         torch.nn.utils.clip_grad_norm_(master_params(curr_optimizer), grad_norm_clip)
+                    # if grad_norm_clip is not None:
+                    #     from megatron import mpu
+                    #     mpu.clip_grad_norm(master_params(curr_optimizer), grad_norm_clip)
                     curr_optimizer.step()
                     batch_counter = 0
                     # Register iteration end with callbacks
