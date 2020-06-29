@@ -132,7 +132,7 @@ class NeuralModule(NeuralInterface):
                     init_params[key] = localvars.locals[key]
 
             # Remove all set keys.
-            for key in init_params.keys():
+            for key in init_params:
                 if key in to_set_params:
                     to_set_params.remove(key)
 
